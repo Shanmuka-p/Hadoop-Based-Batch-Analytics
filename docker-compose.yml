@@ -1,0 +1,82 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    ports:
+      - "9870:9870"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    environment:
+      - CLUSTER_NAME=test-cluster
+
+  spark-master:
+    image: apache/spark:3.5.0
+    container_name: spark-master
+    user: root
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./data:/data
+      - ./output:/output
+    environment:
+      - PYSPARK_PYTHON=python3
+    depends_on:
+      namenode:
+        condition: service_healthy
+
+  spark-worker:
+    image: apache/spark:3.5.0
+    container_name: spark-worker
+    user: root
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    volumes:
+      - ./data:/data
+      - ./output:/output
+    environment:
+      - PYSPARK_PYTHON=python3
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    depends_on:
+      - spark-master
+
+  data-generator:
+    image: alpine
+    container_name: data-generator
+    volumes:
+      - ./data:/data
+    command: /bin/sh -c "apk add --no-cache bash python3 && /data/generate_records.sh"
+    depends_on:
+      namenode:
+        condition: service_healthy
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow
+    user: root
+    command: standalone
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./jobs:/opt/airflow/jobs
+      - ./data:/data
+      - ./output:/output
+    environment:
+      - AIRFLOW_CONN_SPARK_DEFAULT=spark://spark%3A%2F%2Fspark-master:7077
+      - PYSPARK_PYTHON=python3
+      - PYTHONPATH=/home/airflow/.local/lib/python3.8/site-packages
+    depends_on:
+      data-generator:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
