@@ -51,11 +51,11 @@ services:
         condition: service_healthy
 
   data-generator:
-    image: alpine
+    image: python:3.11-alpine
     container_name: data-generator
     volumes:
       - ./data:/data
-    command: /bin/sh -c "apk add --no-cache bash python3 && /data/generate_records.sh && exec sleep infinity"
+    command: /bin/sh -c "sed -i 's/\r$$//' /data/generate_records.sh && sh /data/generate_records.sh && exec sleep infinity"
     depends_on:
       namenode:
         condition: service_healthy

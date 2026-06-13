@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 if [ -s /data/cdr_data.csv ]; then
     echo "Data exists. Skipping."
     exit 0
