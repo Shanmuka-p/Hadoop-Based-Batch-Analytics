@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import sum
+from pyspark.sql.functions import sum as _sum
 import json
 import os
 import sys
@@ -14,11 +14,15 @@ def run_job():
     
     df = spark.read.csv(input_path, header=True, inferSchema=True)
     
-    total_rev = df.agg(sum("charge_amount").alias("total_revenue")).collect()[0]["total_revenue"]
+    total_rev = df.agg(_sum("charge_amount").alias("total_revenue")).collect()[0]["total_revenue"]
+    if total_rev is None:
+        total_rev = 0.0
+        
+    # Write output as CSV with column total_revenue
+    result_df = spark.createDataFrame([(float(total_rev),)], ["total_revenue"])
+    result_df.write.csv(output_path, header=True)
     
-    os.makedirs(output_path, exist_ok=True)
-    
-    # Spark writes directories, so we write to a file within that directory
+    # Also write total_revenue.txt within that directory for compatibility
     with open(f"{output_path}/total_revenue.txt", "w") as f:
         f.write(str(total_rev))
         
@@ -40,4 +44,4 @@ def run_job():
     spark.stop()
 
 if __name__ == "__main__":
-    run_job()
+    run_job()

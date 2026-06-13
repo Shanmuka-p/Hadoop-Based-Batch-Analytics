@@ -2,9 +2,7 @@ import csv
 import random
 from datetime import datetime, timedelta
 
-def generate_records():
-    output_file = "/data/cdr_data.csv"
-    num_records = 2000100  # Just over 2M to ensure 2M+ records
+def generate_records(output_file="/data/cdr_data.csv", num_records=2000100):
     
     print(f"Starting dataset generation of {num_records} records to {output_file}...")
     
@@ -16,10 +14,11 @@ def generate_records():
     # Base start time
     base_time = datetime(2026, 6, 1, 0, 0, 0)
     
+    call_types = ["VOICE", "SMS", "DATA"]
     with open(output_file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         # Header
-        writer.writerow(["caller_id", "duration_sec", "charge_amount", "timestamp", "tower_id"])
+        writer.writerow(["caller_id", "receiver_id", "duration_sec", "tower_id", "timestamp", "call_type", "charge_amount"])
         
         for i in range(num_records):
             # Deterministic 10% whale caller distribution
@@ -27,6 +26,8 @@ def generate_records():
                 caller = whale_caller
             else:
                 caller = random.choice(other_callers)
+            
+            receiver = f"receiver_{random.randint(1, 1000)}"
             
             # Anomaly injection: 0.1% chance of a very long call (3600 to 7200 seconds)
             # Otherwise normal call duration (10 to 600 seconds)
@@ -43,8 +44,9 @@ def generate_records():
             timestamp = (base_time + timedelta(seconds=offset_seconds)).strftime("%Y-%m-%d %H:%M:%S")
             
             tower = random.choice(towers)
+            call_type = random.choice(call_types)
             
-            writer.writerow([caller, duration, charge_amount, timestamp, tower])
+            writer.writerow([caller, receiver, duration, tower, timestamp, call_type, charge_amount])
             
             if (i + 1) % 500000 == 0:
                 print(f"Generated {i + 1} records...")

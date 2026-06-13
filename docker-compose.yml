@@ -13,10 +13,10 @@ services:
       - CLUSTER_NAME=test-cluster
 
   spark-master:
-    image: apache/spark:3.5.0
+    image: bitnami/spark:3.5
     container_name: spark-master
     user: root
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.master.Master
     ports:
       - "8080:8080"
       - "7077:7077"
@@ -28,12 +28,17 @@ services:
     depends_on:
       namenode:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   spark-worker:
-    image: apache/spark:3.5.0
+    image: bitnami/spark:3.5
     container_name: spark-worker
     user: root
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     volumes:
       - ./data:/data
       - ./output:/output
@@ -42,17 +47,23 @@ services:
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=2g
     depends_on:
-      - spark-master
+      spark-master:
+        condition: service_healthy
 
   data-generator:
     image: alpine
     container_name: data-generator
     volumes:
       - ./data:/data
-    command: /bin/sh -c "apk add --no-cache bash python3 && /data/generate_records.sh"
+    command: /bin/sh -c "apk add --no-cache bash python3 && /data/generate_records.sh && exec sleep infinity"
     depends_on:
       namenode:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "test", "-f", "/data/cdr_data.csv"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   airflow:
     build:
@@ -74,9 +85,10 @@ services:
       - PYTHONPATH=/home/airflow/.local/lib/python3.8/site-packages
     depends_on:
       data-generator:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 5
+

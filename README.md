@@ -33,7 +33,7 @@ project-root/
 ## 🧠 System Design Decisions
 
 - **Orchestration Logic**: We utilize Apache Airflow for DAG orchestration to provide fault-tolerant, retryable job execution. Using the `run_pipeline.sh` script as a CLI wrapper provides a clean interface that abstracts the Airflow DAG triggering logic.
-- **Data Skew Strategy ("Whale Caller")**: A "whale caller" was introduced to the dataset, accounting for 10% of records. To handle this, the `anomalous_calls` job leverages Spark’s Window partition functions (`Window.partitionBy("caller_id")`). This ensures data locality, forcing the cluster to shuffle records by caller_id before processing, which prevents partial statistics calculations and memory hotspots on individual worker nodes.
+- **Data Skew Strategy ("Whale Caller")**: A "whale caller" (`caller_whale`) accounts for 10% of the dataset. To manage this skew and avoid severe hotspots on the Spark workers, the `anomalous_calls` job utilizes a **custom RDD Partitioner** (`custom_partitioner`). This partitioner isolates the skewed `"caller_whale"` key entirely into Partition 0, while distributing the remaining callers across Partitions 1–9 using a hash modulo strategy. This prevents the whale caller's partition from colliding with other callers, balancing worker load and ensuring that the statistical calculations (mean and standard deviation) are highly performant.
 - **Scalability**: By leveraging the Hadoop/Spark ecosystem via `docker-compose`, the pipeline is horizontally scalable. The design is optimized for large-scale enterprise workloads, such as revenue assurance and network analysis.
 
 ## 🚀 Getting Started
