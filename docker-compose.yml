@@ -13,7 +13,7 @@ services:
       - CLUSTER_NAME=test-cluster
 
   spark-master:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5
     container_name: spark-master
     user: root
     command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.master.Master
@@ -35,7 +35,7 @@ services:
       retries: 5
 
   spark-worker:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5
     container_name: spark-worker
     user: root
     command: /opt/bitnami/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
