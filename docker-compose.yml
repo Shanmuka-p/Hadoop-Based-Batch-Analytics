@@ -55,7 +55,7 @@ services:
     container_name: data-generator
     volumes:
       - ./data:/data
-    command: /bin/sh -c "sed -i 's/\r$$//' /data/generate_records.sh && sh /data/generate_records.sh && exec sleep infinity"
+    command: /bin/sh -c "dos2unix /data/generate_records.sh && sh /data/generate_records.sh && exec sleep infinity"
     depends_on:
       namenode:
         condition: service_healthy
